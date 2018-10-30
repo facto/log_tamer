@@ -8,12 +8,20 @@ defmodule LogTamer.MixProject do
       elixir: "~> 1.4",
       start_permanent: Mix.env() == :prod,
       description: description(),
+      package: package(),
       deps: deps()
     ]
   end
 
   def description do
     "Capture, flush and resume logging in the Elixir mix console."
+  end
+
+  def package do
+    [
+      licenses: ["Apache 2.0"],
+      links: %{"GitHub" => "https://github.com/facto/log_tamer"}
+    ]
   end
 
   # Run "mix help compile.app" to learn about applications.
