@@ -2,8 +2,8 @@
 
 Capture, flush and resume logging in the console.
 
-A quick-and-dirty solution to runaway console logs when using `iex -S mix`. For
-use during development.
+A quick-and-dirty solution to runaway console logs when using Elixir's awesome
+`iex -S mix`. For use during development.
 
 
 ## Why?
