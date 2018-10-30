@@ -14,7 +14,7 @@ defmodule LogTamer.MixProject do
   end
 
   def description do
-    "Capture, flush and resume logging in the Elixir mix console."
+    "Squelch, capture, flush and resume logging in the Elixir mix console."
   end
 
   def package do
