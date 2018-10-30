@@ -4,8 +4,12 @@ defmodule LogTamer.Server do
 
   use GenServer
 
-  def start_link(_opts) do
+  def start_link do
     GenServer.start_link(__MODULE__, :ok, name: @name)
+  end
+
+  def die(server) do
+    Process.send_after(server, :die, 0)
   end
 
   def log_capture_on(pid) do
@@ -42,6 +46,10 @@ defmodule LogTamer.Server do
     Process.demonitor(ref, [:flush])
     config = remove_log_capture(ref, config)
     {:reply, :ok, config}
+  end
+
+  def handle_info(:die, config) do
+    {:stop, :normal, config}
   end
 
   def handle_info({:DOWN, ref, _, _, _}, config) do

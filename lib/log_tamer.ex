@@ -21,18 +21,31 @@ defmodule LogTamer do
   end
 
   def release_log do
-    GenServer.call(@name, :release_log)
+    case GenServer.whereis(@name) do
+      nil ->
+        {:error, :not_started}
+      pid when is_pid(pid) ->
+        GenServer.call(@name, :release_log)
+    end
   end
 
   def flush_log(opts \\ []) do
-    GenServer.call(@name, {:flush_log, opts})
+    case GenServer.whereis(@name) do
+      nil ->
+        {:error, :not_started}
+      pid when is_pid(pid) ->
+        GenServer.call(@name, {:flush_log, opts})
+    end
   end
 
   def init(:ok) do
+    {:ok, server_pid} = Server.start_link()
+
     initial_state = %{
       ref: nil,
       string_io: nil,
-      contents: ""
+      contents: "",
+      server_pid: server_pid
     }
 
     {:ok, initial_state}
@@ -41,7 +54,6 @@ defmodule LogTamer do
   def start(opts \\ []) do
     case start_link(opts) do
       {:ok, _pid} ->
-        {:ok, _pid} = Server.start_link(opts)
         :ok
       {:error, {:already_started, _pid}} -> :ok
     end
@@ -74,7 +86,9 @@ defmodule LogTamer do
                    elem(content, 1)
                end
 
-    IO.puts(contents)
+    output(contents)
+
+    Process.send_after(self(), :die, 0)
 
     {:reply, :ok, %{state | contents: contents, ref: nil, string_io: nil}}
   end
@@ -85,9 +99,13 @@ defmodule LogTamer do
 
     {to_use, remainder} = calc_output(contents, opts)
 
-    IO.puts(to_use)
+    output(to_use)
 
     {:reply, :ok, %{state | contents: remainder}}
+  end
+
+  def handle_info(:die, state) do
+    {:stop, :normal, state}
   end
 
   def init_proxy(pid, parent) do
@@ -109,6 +127,10 @@ defmodule LogTamer do
     end
   catch
     :exit, :noproc -> :proc_lib.init_ack(:noproc)
+  end
+
+  def terminate(_, %{server_pid: server_pid}) do
+    Server.die(server_pid)
   end
 
   # PRIVATE ##################################################
@@ -157,5 +179,9 @@ defmodule LogTamer do
       Regex.match?(~r/\n/, contents) -> "\n"
       true -> ""
     end
+  end
+
+  defp output(contents) do
+    IO.write(contents)
   end
 end
