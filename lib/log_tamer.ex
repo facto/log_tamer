@@ -13,7 +13,7 @@ defmodule LogTamer do
 
   def cl, do: capture_log()
   def rl, do: release_log()
-  def fl, do: flush_log()
+  def fl(opts \\ []), do: flush_log(opts)
 
   def capture_log do
     start()
@@ -24,15 +24,15 @@ defmodule LogTamer do
     GenServer.call(@name, :release_log)
   end
 
-  def flush_log do
-    GenServer.call(@name, :flush_log)
+  def flush_log(opts \\ []) do
+    GenServer.call(@name, {:flush_log, opts})
   end
 
   def init(:ok) do
     initial_state = %{
       ref: nil,
       string_io: nil,
-      contents: nil
+      contents: ""
     }
 
     {:ok, initial_state}
@@ -79,12 +79,15 @@ defmodule LogTamer do
     {:reply, :ok, %{state | contents: contents, ref: nil, string_io: nil}}
   end
 
-  def handle_call(:flush_log, _from, %{string_io: string_io} = state) do
-    contents = StringIO.flush(string_io)
+  def handle_call({:flush_log, opts}, _from, %{contents: contents, string_io: string_io} = state) do
+    new_contents = StringIO.flush(string_io)
+    contents = contents <> new_contents
 
-    IO.puts(contents)
+    {to_use, remainder} = calc_output(contents, opts)
 
-    {:reply, :ok, state}
+    IO.puts(to_use)
+
+    {:reply, :ok, %{state | contents: remainder}}
   end
 
   def init_proxy(pid, parent) do
@@ -132,6 +135,27 @@ defmodule LogTamer do
       {:error, :module_not_found} = error ->
         mfa = {__MODULE__, :remove_capture, [pid]}
         exit({error, mfa})
+    end
+  end
+
+  defp calc_output(contents, opts) do
+    case Keyword.get(opts, :limit, :infinity) do
+      :infinity ->
+        {contents, ""}
+      limit ->
+        newline = detect_newline(contents)
+        lines = String.split(contents, newline)
+        {to_use, remainder} = Enum.split(lines, limit)
+        {Enum.join(to_use, newline), Enum.join(remainder, newline)}
+    end
+  end
+
+  defp detect_newline(contents) do
+    cond do
+      Regex.match?(~r/\r\n/, contents) -> "\r\n"
+      Regex.match?(~r/\r/, contents) -> "\r"
+      Regex.match?(~r/\n/, contents) -> "\n"
+      true -> ""
     end
   end
 end
