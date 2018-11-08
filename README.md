@@ -35,7 +35,7 @@ Lastly, plop this into your
 [.iex.exs file](https://hexdocs.pm/iex/IEx.html#module-the-iex-exs-file):
 
 ```elixir
-import LogTamer, only: [
+import_if_available LogTamer, only: [
   cl: 0, fl: 0, fl: 1, rl: 0,
   capture_log: 0, flush_log: 0, flush_log: 1, release_log: 0
 ]
